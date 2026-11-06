@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tugas P5 - API DummyJSON</title>
+<style>
+  :root { --maroon:#7a1f16; --bg:#f5efe8; --card:#fff; --text:#2a1512; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--text); }
+  header { background:var(--maroon); color:#fff; padding:16px; text-align:center; }
+  header h1 { margin:0; font-size:1.2rem; }
+  nav { display:flex; gap:8px; padding:12px; justify-content:center; }
+  nav button { padding:8px 16px; border:2px solid var(--maroon); background:#fff; color:var(--maroon); border-radius:8px; font-weight:600; cursor:pointer; }
+  nav button.active { background:var(--maroon); color:#fff; }
+  .search { display:flex; gap:8px; padding:0 12px 12px; max-width:600px; margin:auto; }
+  .search input { flex:1; padding:10px; border:1px solid #ccc; border-radius:8px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; padding:12px; max-width:900px; margin:auto; }
+  .card { background:var(--card); border-radius:12px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.15); }
+  .card img { width:100%; height:140px; object-fit:cover; background:#eee; }
+  .card .body { padding:10px; font-size:.85rem; }
+  .card h3 { margin:0 0 4px; font-size:.95rem; }
+  .price { color:var(--maroon); font-weight:700; }
+  .muted { color:#777; }
+  .status { text-align:center; padding:24px; }
+</style>
+</head>
+<body>
+<header><h1>Aplikasi DummyJSON</h1></header>
+
+<nav>
+  <button id="tab-products" class="active">Produk</button>
+  <button id="tab-recipes">Resep</button>
+</nav>
+
+<div class="search">
+  <input id="q" type="search" placeholder="Cari...">
+  <button id="btn" style="padding:10px 16px;border:0;border-radius:8px;background:var(--maroon);color:#fff;">Cari</button>
+</div>
+
+<div id="status" class="status"></div>
+<div id="list" class="grid"></div>
+
+<script>
+  const BASE = 'https://dummyjson.com';
+  let mode = 'products';
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  // Endpoint 1: GET /products (dan /products/search?q=)
+  // Endpoint 2: GET /recipes  (dan /recipes/search?q=)
+  async function load() {
+    const q = $('q').value.trim();
+    const url = q
+      ? `${BASE}/${mode}/search?q=${encodeURIComponent(q)}&limit=20`
+      : `${BASE}/${mode}?limit=20`;
+
+    $('status').textContent = 'Memuat data...';
+    $('list').innerHTML = '';
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const items = data[mode] || [];
+      $('status').textContent = items.length ? '' : 'Data tidak ditemukan.';
+      $('list').innerHTML = items.map(mode === 'products' ? productCard : recipeCard).join('');
+    } catch (e) {
+      $('status').textContent = 'Gagal memuat data: ' + e.message + '. Cek koneksi internet, atau buka halaman ini langsung di Safari/Chrome (bukan lewat preview/viewer file).';
+    }
+  }
+
+  const productCard = (p) => `
+    <div class="card">
+      <img src="${esc(p.thumbnail)}" alt="${esc(p.title)}">
+      <div class="body">
+        <h3>${esc(p.title)}</h3>
+        <div class="price">$${esc(p.price)}</div>
+        <div class="muted">${esc(p.category)} • ⭐ ${esc(p.rating)}</div>
+      </div>
+    </div>`;
+
+  const recipeCard = (r) => `
+    <div class="card">
+      <img src="${esc(r.image)}" alt="${esc(r.name)}">
+      <div class="body">
+        <h3>${esc(r.name)}</h3>
+        <div class="muted">${esc(r.cuisine)} • ${esc(r.difficulty)}</div>
+        <div class="muted">${esc(r.cookTimeMinutes)} menit • ⭐ ${esc(r.rating)}</div>
+      </div>
+    </div>`;
+
+  function setMode(m) {
+    mode = m;
+    $('tab-products').classList.toggle('active', m === 'products');
+    $('tab-recipes').classList.toggle('active', m === 'recipes');
+    $('q').value = '';
+    load();
+  }
+
+  $('tab-products').onclick = () => setMode('products');
+  $('tab-recipes').onclick = () => setMode('recipes');
+  $('btn').onclick = load;
+  $('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') load(); });
+
+  load();
+</script>
+</body>
+</html>
